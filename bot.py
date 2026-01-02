@@ -125,7 +125,7 @@ async def joined(_, q: CallbackQuery):
     try:
         await app.get_chat_member(FORCE_JOIN, q.from_user.id)
     except:
-        return await q.answer("❌ Join channel first", show_alert=True)
+        return await q.answer("❌ **Join Channel First**", show_alert=True)
 
     await q.message.delete()
     await app.send_message(q.from_user.id, "🔥 Welcome", reply_markup=main_kb)
@@ -177,12 +177,8 @@ async def support(_, m):
 @app.on_message(filters.regex(r"^🏷 Discount$"))
 async def discount(_, m):
     hard_reset(m.from_user.id)
-
-    uid = m.from_user.id
-    user = users.find_one({"user_id": uid})
-
-    today_deposit = user.get("today_deposit", 0) if user else 0
-
+    u = get_user(m.from_user.id, m.from_user.first_name)
+    
     await m.reply(
         "🏷 **Daily Deposit Discount Offer**\n\n"
         "📌 Slabs (Telegram Accounts only):\n"
@@ -190,11 +186,11 @@ async def discount(_, m):
         "• ₹2000+ → 10% discount\n"
         "• ₹4000+ → 15% discount\n"
         "• ₹5000+ → 20% discount\n\n"
-        f"💰 Your total deposit today: ₹{today_deposit}\n"
+        f"💰 Your total deposit today: ₹{u['total_deposit']}\n"
         + (
             "🚫 No discount active for you today yet.\n"
             "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
-            if today_deposit < 1000 else
+            if u < 1000 else
             "✅ Discount unlocked! It will apply on Telegram Accounts purchase.\n\n"
         )
         +
@@ -207,14 +203,14 @@ async def discount(_, m):
 async def promo(_, m):
     hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "PROMO"}
-    await m.reply("🎁 Promocode bhejo:")
+    await m.reply("🎁 **SEND YOUR PROMO CODE** :")
 
-@app.on_message(filters.command("pro"))
+@app.on_message(filters.command("code"))
 async def create_promo(_, m):
     if m.from_user.id not in ADMIN_IDS:
         return
     if len(m.command) < 2 or not m.command[1].isdigit():
-        return await m.reply("Use: /pro 100")
+        return await m.reply("Use: /code amount")
 
     code = "PROMO-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
     promos.insert_one({
@@ -222,7 +218,7 @@ async def create_promo(_, m):
         "amount": int(m.command[1]),
         "used": []
     })
-    await m.reply(f"✅ Promocode created\n\nCode: `{code}`")
+    await m.reply(f"✅ **Promocode Created**\n\n**Code :** `{code}`")
 
 # ================= TELEGRAM ACCOUNTS =================
 
@@ -243,19 +239,19 @@ async def deposit(_, m):
     hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "DEPOSIT", "step": "AMOUNT"}
     await m.reply(
-        f"💰 **Pay via UPI**\n\nUPI ID: `{UPI_ID}`",
+        f"💰 **Pay via UPI**\n\n **UPI ID :** `{UPI_ID}`",
         reply_markup=deposit_kb()
     )
 
 @app.on_callback_query(filters.regex("^cancel_deposit$"))
 async def cancel_deposit(_, q: CallbackQuery):
     hard_reset(q.from_user.id)
-    await q.message.edit("⛔ Deposit cancelled")
-    await app.send_message(q.from_user.id, "Main menu 👇", reply_markup=main_kb)
+    await q.message.edit("⛔ **Deposit cancelled**")
+    await app.send_message(q.from_user.id, "**Main Menu** 👇", reply_markup=main_kb)
 
 @app.on_callback_query(filters.regex("^paid$"))
 async def paid(_, q: CallbackQuery):
-    await q.message.reply("💰 Enter deposit amount (numbers only):")
+    await q.message.reply("💰 **Enter deposit amount (numbers only) :**")
 
 # ================= DEPOSIT HISTORY =================
 
@@ -268,16 +264,16 @@ async def deposit_history(_, m):
     )
 
     if not data:
-        return await m.reply("📜 No deposit history found.")
+        return await m.reply("📜 **No deposit history found.**")
 
     text = "📜 **Deposit History**\n\n"
 
     for d in data[-10:]:
-        status = d.get("status", "pending")  # 🔥 FIX LINE
+        status = d.get("status", "pending")
         text += (
-            f"🧾 Order ID: `{d.get('order_id','N/A')}`\n"
-            f"💰 Amount: ₹{d.get('amount',0)}\n"
-            f"📌 Status: {status}\n"
+            f"🧾 **Order IDb:** `{d.get('order_id','N/A')}`\n\n"
+            f"💰 **Amount :** ₹{d.get('amount',0)}\n\n"
+            f"📌 **Status :** {status}\n\n"
             f"⏰ {d.get('time','')}\n\n"
         )
 
@@ -298,11 +294,11 @@ async def router(_, m):
     if state.get("flow") == "PROMO":
         promo = promos.find_one({"code": text})
         if not promo or uid in promo["used"]:
-            return await m.reply("❌ Invalid promocode")
+            return await m.reply("❌ **Invalid Promocode**")
         add_balance(uid, promo["amount"])
         promos.update_one({"code": text}, {"$push": {"used": uid}})
         hard_reset(uid)
-        return await m.reply(f"✅ ₹{promo['amount']} added to balance")
+        return await m.reply(f"✅ ₹{promo['amount']} **added to balance**")
 
     # BUY ACCOUNTS
     if state.get("flow") == "BUY":
@@ -312,10 +308,10 @@ async def router(_, m):
         cost = qty * 50
         u = users.find_one({"_id": uid})
         if u["balance"] < cost:
-            return await m.reply("❌ Insufficient balance")
+            return await m.reply("❌ **Insufficient balance**")
         users.update_one({"_id": uid}, {"$inc": {"balance": -cost}})
         hard_reset(uid)
-        return await m.reply(f"✅ Purchased {qty} Telegram accounts")
+        return await m.reply(f"✅ **Purchased** {qty} **Telegram accounts**")
 
     # DEPOSIT FLOW
     if state.get("flow") == "DEPOSIT":
@@ -324,7 +320,7 @@ async def router(_, m):
                 return
             user_state[uid]["amount"] = int(text)
             user_state[uid]["step"] = "UTR"
-            return await m.reply("🔢 Enter UTR / Transaction ID:")
+            return await m.reply("🔢 **Enter UTR / Transaction ID:**")
 
         if state["step"] == "UTR":
             order_id = str(uuid.uuid4())[:8]
@@ -348,7 +344,7 @@ async def router(_, m):
                 )
             hard_reset(uid)
             return await m.reply(
-                f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`"
+                f"⏳ **Waiting For Admin Approval**\n\n**Order ID:** `{order_id}`"
             )
 
 # ================= ADMIN APPROVAL =================
@@ -368,7 +364,7 @@ async def approve(_, q: CallbackQuery):
 async def reject(_, q: CallbackQuery):
     oid = q.data.split("_")[1]
     orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
-    await q.message.edit("❌ Rejected")
+    await q.message.edit("Payment Rejected Please Contact Support Team")
 
 # ================= RUN =================
 
