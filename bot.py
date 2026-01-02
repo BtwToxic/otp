@@ -11,6 +11,9 @@ import uuid, random, string
 
 # ================= CONFIG =================
 
+API_ID = 21705136
+API_HASH = "78730e89d196e160b0f1992018c6cb19"
+
 BOT_TOKEN = "8366650744:AAG5wP84RcqA8VmN4OcmR3ucTsmXfeCRmqc"
 MONGO_URL = "mongodb+srv://Krishna:pss968048@cluster0.4rfuzro.mongodb.net/?retryWrites=true&w=majority"
 DB_NAME = "tg_shop"
@@ -21,7 +24,12 @@ UPI_ID = "dev@upi"
 
 # ================= APP INIT =================
 
-app = Client("tg_shop_bot", bot_token=BOT_TOKEN)
+app = Client(
+    "tg_shop_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
 
 mongo = MongoClient(MONGO_URL)
 db = mongo[DB_NAME]
@@ -32,7 +40,7 @@ orders = db.orders
 
 user_state = {}
 
-# ================= KEYBOARD =================
+# ================= KEYBOARDS =================
 
 main_kb = ReplyKeyboardMarkup(
     [
@@ -158,7 +166,7 @@ async def buy(_, m):
     await m.reply("📦 Price: ₹50 per ID\nQuantity bhejo (number only)")
 
 # ================= TEXT ROUTER (SAFE) =================
-# ⚠️ NO filters.command() USED ANYWHERE
+# NOTE: commands excluded via regex, no filters.command() used
 
 @app.on_message(filters.text & ~filters.regex(r"^/"))
 async def text_router(_, m):
@@ -170,17 +178,14 @@ async def text_router(_, m):
         promo = promos.find_one({"code": text})
         if not promo:
             return await m.reply("❌ Invalid promocode")
-
         if datetime.now() > promo["expires"]:
             return await m.reply("❌ Promocode expired")
-
         if uid in promo["used"]:
             return await m.reply("❌ Already used")
 
         add_balance(uid, promo["amount"])
         promos.update_one({"code": text}, {"$push": {"used": uid}})
         user_state.pop(uid, None)
-
         return await m.reply(f"✅ ₹{promo['amount']} added to balance")
 
     # DEPOSIT
@@ -211,9 +216,7 @@ async def text_router(_, m):
             )
 
         user_state.pop(uid, None)
-        return await m.reply(
-            f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`"
-        )
+        return await m.reply(f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`")
 
     # BUY
     if user_state.get(uid) == "BUY":
@@ -225,16 +228,11 @@ async def text_router(_, m):
         u = users.find_one({"_id": uid})
 
         if u["balance"] < cost:
-            return await m.reply(
-                f"❌ Insufficient balance\nRequired: ₹{cost}"
-            )
+            return await m.reply(f"❌ Insufficient balance\nRequired: ₹{cost}")
 
         users.update_one({"_id": uid}, {"$inc": {"balance": -cost}})
         user_state.pop(uid, None)
-
-        return await m.reply(
-            f"✅ Purchase Successful\nQty: {qty}\nCost: ₹{cost}"
-        )
+        return await m.reply(f"✅ Purchase Successful\nQty: {qty}\nCost: ₹{cost}")
 
 # ================= APPROVE =================
 
