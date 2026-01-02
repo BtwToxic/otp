@@ -395,16 +395,17 @@ async def reject(_, q: CallbackQuery):
     await app.send_message(order["user"], "❌ Payment rejected\nContact support")
 
 # ================= /add =================
-@app.on_message(filters.command("add") & filters.private)
+@app.on_message(filters.command("add"))
 async def add_start(_, m):
     if m.from_user.id not in ADMIN_IDS:
-        return
+        return await m.reply("❌ You are not admin")
 
     user_state[m.from_user.id] = {"flow": "ADD_COUNTRY"}
     await m.reply(
-        "➕ Add Account\n\nType country:\nindia / south_africa / myanmar"
+        "➕ Add Account\n\n"
+        "Type country:\n"
+        "india / south_africa / myanmar"
     )
-
 # ================= RUN =================
 print("Bot Started ✅")
 app.run()
