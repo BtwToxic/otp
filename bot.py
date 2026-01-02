@@ -177,6 +177,12 @@ async def support(_, m):
 @app.on_message(filters.regex(r"^🏷 Discount$"))
 async def discount(_, m):
     hard_reset(m.from_user.id)
+
+    uid = m.from_user.id
+    user = users.find_one({"user_id": uid})
+
+    today_deposit = user.get("today_deposit", 0) if user else 0
+
     await m.reply(
         "🏷 **Daily Deposit Discount Offer**\n\n"
         "📌 Slabs (Telegram Accounts only):\n"
@@ -184,13 +190,17 @@ async def discount(_, m):
         "• ₹2000+ → 10% discount\n"
         "• ₹4000+ → 15% discount\n"
         "• ₹5000+ → 20% discount\n\n"
-       f"💰 Your total deposit today: ₹{u['today_deposit']}\n"
-        "🚫 No discount active for you today yet.\n"
-        "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
+        f"💰 Your total deposit today: ₹{today_deposit}\n"
+        + (
+            "🚫 No discount active for you today yet.\n"
+            "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
+            if today_deposit < 1000 else
+            "✅ Discount unlocked! It will apply on Telegram Accounts purchase.\n\n"
+        )
+        +
         "⏰ Discount resets daily (00:00–23:59)\n"
-        "⚠️ Only valid on Telegram Accounts"
+        "⚠️ Discount valid only on Telegram Accounts"
     )
-
 # ================= PROMOCODE =================
 
 @app.on_message(filters.regex(r"^🎁 Promocode$"))
