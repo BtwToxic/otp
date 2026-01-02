@@ -270,7 +270,7 @@ async def deposit_history(_, m):
     await m.reply(text)
 
 # ================= TEXT ROUTER =================
-@app.on_message(filters.text & ~filters.command(""))
+@app.on_message(filters.text & ~filters.command(["start", "add", "code"]))
 async def router(_, m):
     uid = m.from_user.id
     state = user_state.get(uid)
