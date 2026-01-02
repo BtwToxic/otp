@@ -313,9 +313,9 @@ async def router(_, m):
         for s in sessions:
             await app.send_message(
                 uid,
-                f"🔐 **Here is your ID String Session**\n\n`{s['session']}`",
+                f"🔐 **Here is your tg Account String Session**\n\n`{s['session']}`\n\n**Note ~ USE THIS STRING SESSION FOR LOG IN CLICK LOG IN BUTTON**",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(f"@{bot.username}", url=f"https://t.me/{bot.username}")]
+                    [InlineKeyboardButton(f"**Log in**", url=f"https://t.me/{bot.username}")]
                 ])
             )
             accounts.delete_one({"_id": s["_id"]})
