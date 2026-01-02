@@ -1,10 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.types import (
-    ReplyKeyboardMarkup,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    CallbackQuery
-)
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, CallbackQuery
 from pymongo import MongoClient
 from datetime import datetime
 import uuid
@@ -33,7 +28,6 @@ app = Client(
 
 mongo = MongoClient(MONGO_URL)
 db = mongo[DB_NAME]
-
 users = db.users
 orders = db.orders
 
@@ -67,11 +61,11 @@ def paid_kb():
         [InlineKeyboardButton("⛔ Cancel Deposit", callback_data="cancel_deposit")]
     ])
 
-def admin_kb(order_id):
+def admin_kb(oid):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{order_id}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{order_id}")
+            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{oid}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{oid}")
         ]
     ])
 
@@ -83,22 +77,17 @@ def get_user(uid, name):
             "_id": uid,
             "name": name,
             "balance": 0,
-            "total_deposit": 0,
-            "today_deposit": 0
+            "total_deposit": 0
         })
     return users.find_one({"_id": uid})
 
 def add_balance(uid, amt):
     users.update_one(
         {"_id": uid},
-        {"$inc": {
-            "balance": amt,
-            "total_deposit": amt,
-            "today_deposit": amt
-        }}
+        {"$inc": {"balance": amt, "total_deposit": amt}}
     )
 
-# ================= START =================
+# ================= START / FORCE JOIN =================
 
 @app.on_message(filters.command("start"))
 async def start(_, m):
@@ -121,56 +110,81 @@ async def joined(_, q: CallbackQuery):
     except:
         return await q.answer("❌ Pehle join karo", show_alert=True)
 
+    reset_state(q.from_user.id)
     await q.message.delete()
-    get_user(q.from_user.id, q.from_user.first_name)
-    await q.message.chat.send_message("🔥 Welcome!", reply_markup=main_kb)
+    await app.send_message(q.from_user.id, "🔥 Welcome!", reply_markup=main_kb)
+
+# ================= MENU BUTTONS =================
+
+@app.on_message(filters.regex("^👤 My Profile$"))
+async def profile(_, m):
+    reset_state(m.from_user.id)
+    u = get_user(m.from_user.id, m.from_user.first_name)
+    await m.reply(
+        f"👤 Profile\n\n"
+        f"ID: `{u['_id']}`\n"
+        f"Balance: ₹{u['balance']}\n"
+        f"Total Deposit: ₹{u['total_deposit']}"
+    )
+
+@app.on_message(filters.regex("^📘 How to Use$"))
+async def howto(_, m):
+    reset_state(m.from_user.id)
+    await m.reply("📘 Deposit → Buy → Done")
+
+@app.on_message(filters.regex("^🏷 Discount$"))
+async def discount(_, m):
+    reset_state(m.from_user.id)
+    await m.reply("🏷 ₹1000+ → 5%\n₹2000+ → 10%")
+
+@app.on_message(filters.regex("^🧑‍💻 Support$"))
+async def support(_, m):
+    reset_state(m.from_user.id)
+    await m.reply("Support:\n@techbotss\n@NIXHANT_VERMA33")
 
 # ================= DEPOSIT =================
 
 @app.on_message(filters.regex("^💰 Deposit$"))
 async def deposit(_, m):
     reset_state(m.from_user.id)
-    user_state[m.from_user.id] = {"flow": "DEPOSIT", "step": "PAID"}
+    user_state[m.from_user.id] = {"step": "AMOUNT"}
     await m.reply(
         f"💰 Pay via UPI\n\nUPI ID: `{UPI_ID}`",
         reply_markup=paid_kb()
     )
 
 @app.on_callback_query(filters.regex("^cancel_deposit$"))
-async def cancel_deposit(_, q: CallbackQuery):
+async def cancel(_, q: CallbackQuery):
     reset_state(q.from_user.id)
     await q.message.edit("⛔ Deposit cancelled")
-    await q.message.chat.send_message("Main menu 👇", reply_markup=main_kb)
+    await app.send_message(q.from_user.id, "Main menu 👇", reply_markup=main_kb)
 
 @app.on_callback_query(filters.regex("^paid$"))
 async def paid(_, q: CallbackQuery):
-    user_state[q.from_user.id] = {"flow": "DEPOSIT", "step": "AMOUNT"}
+    user_state[q.from_user.id] = {"step": "AMOUNT"}
     await q.message.reply("💰 Enter paid amount:")
 
-# ================= TEXT ROUTER =================
+# ================= TEXT ROUTER (ONLY DEPOSIT FLOW) =================
 
 @app.on_message(filters.text & ~filters.regex(r"^/"))
-async def text_router(_, m):
+async def router(_, m):
     uid = m.from_user.id
-    text = m.text.strip()
     state = user_state.get(uid)
+    if not state:
+        return
 
-    # Deposit amount
-    if state and state.get("flow") == "DEPOSIT" and state.get("step") == "AMOUNT":
+    text = m.text.strip()
+
+    if state["step"] == "AMOUNT":
         if not text.isdigit():
             return await m.reply("❌ Amount number me bhejo")
-        user_state[uid] = {
-            "flow": "DEPOSIT",
-            "step": "UTR",
-            "amount": int(text)
-        }
+        user_state[uid] = {"step": "UTR", "amount": int(text)}
         return await m.reply("🔢 UTR / Transaction ID bhejo:")
 
-    # Deposit UTR
-    if state and state.get("flow") == "DEPOSIT" and state.get("step") == "UTR":
-        order_id = str(uuid.uuid4())[:8]
+    if state["step"] == "UTR":
+        oid = str(uuid.uuid4())[:8]
         orders.insert_one({
-            "order_id": order_id,
+            "order_id": oid,
             "user": uid,
             "amount": state["amount"],
             "utr": text,
@@ -181,16 +195,12 @@ async def text_router(_, m):
         for admin in ADMIN_IDS:
             await app.send_message(
                 admin,
-                f"🧾 Deposit Request\n\n"
-                f"User: {uid}\n"
-                f"Amount: ₹{state['amount']}\n"
-                f"UTR: {text}\n"
-                f"Order ID: {order_id}",
-                reply_markup=admin_kb(order_id)
+                f"🧾 Deposit Request\n\nUser: {uid}\nAmount: ₹{state['amount']}\nUTR: {text}\nOrder ID: {oid}",
+                reply_markup=admin_kb(oid)
             )
 
         reset_state(uid)
-        await m.reply(f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`")
+        await m.reply(f"⏳ Waiting for admin approval\nOrder ID: `{oid}`")
 
 # ================= ADMIN ACTIONS =================
 
@@ -205,7 +215,6 @@ async def approve(_, q: CallbackQuery):
 
     add_balance(order["user"], order["amount"])
     orders.update_one({"order_id": oid}, {"$set": {"status": "approved"}})
-
     await app.send_message(order["user"], f"✅ Payment approved\n₹{order['amount']} added")
     await q.message.edit("✅ Approved")
 
@@ -214,12 +223,8 @@ async def reject(_, q: CallbackQuery):
     if q.from_user.id not in ADMIN_IDS:
         return
     oid = q.data.split("_")[1]
-    order = orders.find_one({"order_id": oid})
-    if not order or order["status"] != "pending":
-        return
-
     orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
-    await app.send_message(order["user"], "❌ Payment rejected")
+    await app.send_message(orders.find_one({"order_id": oid})["user"], "❌ Payment rejected")
     await q.message.edit("❌ Rejected")
 
 # ================= DEPOSIT HISTORY =================
@@ -227,30 +232,14 @@ async def reject(_, q: CallbackQuery):
 @app.on_message(filters.regex("^📜 Deposit History$"))
 async def history(_, m):
     reset_state(m.from_user.id)
-    data = list(
-        orders.find({"user": m.from_user.id})
-        .sort("time", -1)
-        .limit(10)
-    )
-
+    data = list(orders.find({"user": m.from_user.id}).sort("time", -1).limit(10))
     if not data:
         return await m.reply("📜 No deposit history")
 
-    msg = "📜 **Deposit History**\n\n"
+    msg = "📜 Deposit History\n\n"
     for d in data:
-        msg += (
-            f"🆔 {d['order_id']}\n"
-            f"₹{d['amount']} | {d['status'].upper()}\n"
-            f"UTR: {d['utr']}\n\n"
-        )
+        msg += f"{d['order_id']} | ₹{d['amount']} | {d['status'].upper()}\n"
     await m.reply(msg)
-
-# ================= STATIC =================
-
-@app.on_message(filters.regex("^🧑‍💻 Support$"))
-async def support(_, m):
-    reset_state(m.from_user.id)
-    await m.reply("Support:\n@techbotss\n@NIXHANT_VERMA33")
 
 # ================= RUN =================
 
