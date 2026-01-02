@@ -244,11 +244,11 @@ async def deposit(_, m):
     await m.reply_photo(
         photo="assets/qr.jpg",
         caption=(
-            "💰 **Pay via UPI**\n\n"
-            f"**UPI ID:** `{UPI_ID}`\n\n"
-            "**NAME – NASEEM AKHTER**\n\n"
-            "**All Payment Method Accepted • ✔️**\n\n"
-            "**Regards -** @BlazeNXT"
+            "🧾**Pay via UPI**\n\n"
+            f"💳**UPI ID:** `{UPI_ID}`\n\n"
+            "🪙**NAME – NASEEM AKHTER**\n\n"
+            "🛍️**All Payment Method Accepted • ✔️**\n\n"
+            "☎️**Regards -** @BlazeNXT"
         ),
         reply_markup=deposit_kb()
     )
