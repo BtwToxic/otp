@@ -347,21 +347,50 @@ async def router(_, m):
 
 @app.on_callback_query(filters.regex("^approve_"))
 async def approve(_, q: CallbackQuery):
-    oid = q.data.split("_")[1]
+    oid = q.data.split("_", 1)[1]
+
     order = orders.find_one({"order_id": oid})
     if not order:
-        return
+        return await q.answer("Order not found", show_alert=True)
+
     add_balance(order["user"], order["amount"])
-    orders.update_one({"order_id": oid}, {"$set": {"status": "approved"}})
-    await app.send_message(order["user"], f"✅ Payment approved\n₹{order['amount']} added")
+
+    orders.update_one(
+        {"order_id": oid},
+        {"$set": {"status": "approved"}}
+    )
+
+    await app.send_message(
+        order["user"],
+        f"✅ Payment approved\n₹{order['amount']} added"
+    )
+
     await q.message.edit("✅ Approved")
+    await q.answer("Approved")
+
 
 @app.on_callback_query(filters.regex("^reject_"))
 async def reject(_, q: CallbackQuery):
-    oid = q.data.split("_")[1]
-    orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
-    await q.message.edit("Payment Rejected")
-    await app.send_message(order["user"], "**Payment Rejected Please Contact Support Team**")
+    oid = q.data.split("_", 1)[1]
+
+    order = orders.find_one({"order_id": oid})
+    if not order:
+        return await q.answer("Order not found", show_alert=True)
+
+    orders.update_one(
+        {"order_id": oid},
+        {"$set": {"status": "rejected"}}
+    )
+
+    await q.message.edit("❌ Payment Rejected")
+
+    await app.send_message(
+        order["user"],
+        "❌ **Payment Rejected**\nPlease contact Support Team."
+    )
+
+    await q.answer("Rejected")
 # ================= RUN =================
 
+print("Bot Started ✅")
 app.run()
