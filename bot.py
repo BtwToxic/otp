@@ -195,7 +195,7 @@ async def telegram_accounts(_, m):
         "📦 **Telegram Accounts**\n\nSelect Country 👇",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🇮🇳 India", callback_data="acct_india")],
-            [InlineKeyboardButton("🇿🇦 South Africa", callback_data="acct_south_africa")],
+            [InlineKeyboardButton("🇱🇷 U.S.A", callback_data="acct_south_africa")],
             [InlineKeyboardButton("🇲🇲 Myanmar", callback_data="acct_myanmar")]
         ])
     )
@@ -224,7 +224,7 @@ async def acct_country(_, q: CallbackQuery):
     c = q.data.replace("acct_", "")
     mapping = {
         "india": ("India", "🇮🇳"),
-        "south_africa": ("South Africa", "🇿🇦"),
+        "south_africa": ("U.S.A", "🇱🇷"),
         "myanmar": ("Myanmar", "🇲🇲")
     }
     label, flag = mapping[c]
@@ -362,7 +362,7 @@ async def router(_, m):
 
     # ADD STRING SESSION (ADMIN)
     if state.get("flow") == "ADD_COUNTRY" and uid in ADMIN_IDS:
-        if text not in ("india", "south_africa", "myanmar"):
+        if text not in ("india", "usa", "myanmar"):
             return await m.reply("❌ Invalid country")
         user_state[uid] = {"flow": "ADD_SESSION", "country": text}
         return await m.reply("🔐 Send STRING SESSION:")
@@ -414,7 +414,7 @@ async def add_start(_, m):
     await m.reply(
         "➕ Add Account\n\n"
         "Type country:\n"
-        "india / south_africa / myanmar"
+        "india / usa / myanmar"
     )
 # ================= RUN =================
 print("Bot Started ✅")
