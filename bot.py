@@ -35,8 +35,8 @@ db = mongo[DB_NAME]
 users = db.users
 orders = db.orders
 promos = db.promos
-accounts = db.accounts          # string sessions
-inventory = db.inventory        # stock per country
+accounts = db.accounts         
+inventory = db.inventory        
 
 user_state = {}
 
@@ -155,7 +155,7 @@ async def how_to_use(_, m):
 @app.on_message(filters.regex(r"^🧑‍💻 Support$"))
 async def support(_, m):
     hard_reset(m.from_user.id)
-    await m.reply("Support: @ikBug")
+    await m.reply("**📚 FAQ & Support 😊**\n\n🔗**Official Channel:** 👉 @tgsupplyupdates\n💬 **Support Admin:** 👉 @BlazeNXT\n\n**🚦 Feel free to reach out if you need any help!**")
 
 # ================= DISCOUNT =================
 @app.on_message(filters.regex(r"^🏷 Discount$"))
