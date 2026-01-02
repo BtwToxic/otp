@@ -1,5 +1,10 @@
 from pyrogram import Client, filters
-from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import (
+    ReplyKeyboardMarkup,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery
+)
 from pymongo import MongoClient
 from datetime import datetime
 import uuid, random, string
@@ -17,7 +22,7 @@ ADMIN_IDS = [6944519938]
 FORCE_JOIN = "@techbotss"
 UPI_ID = "dev@upi"
 
-# ================= APP =================
+# ================= INIT =================
 
 app = Client(
     "tg_shop_bot",
@@ -33,6 +38,38 @@ orders = db.orders
 promos = db.promos
 
 user_state = {}
+
+# ================= HELPERS =================
+
+def hard_reset(uid):
+    user_state.pop(uid, None)
+
+def get_user(uid, name):
+    u = users.find_one({"_id": uid})
+    if not u:
+        users.insert_one({
+            "_id": uid,
+            "name": name,
+            "balance": 0,
+            "total_deposit": 0,
+            "today_deposit": 0,
+            "last_update": datetime.now()
+        })
+        u = users.find_one({"_id": uid})
+    return u
+
+def add_balance(uid, amt):
+    users.update_one(
+        {"_id": uid},
+        {
+            "$inc": {
+                "balance": amt,
+                "total_deposit": amt,
+                "today_deposit": amt
+            },
+            "$set": {"last_update": datetime.now()}
+        }
+    )
 
 # ================= KEYBOARDS =================
 
@@ -53,58 +90,32 @@ def force_join_kb():
         [InlineKeyboardButton("✅ Joined", callback_data="joined")]
     ])
 
-def paid_kb():
+def deposit_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ Paid", callback_data="paid")],
-        [InlineKeyboardButton("⛔ Cancel Deposit", callback_data="cancel")]
+        [InlineKeyboardButton("⛔ Cancel Deposit", callback_data="cancel_deposit")]
     ])
 
-def admin_kb(oid):
+def admin_kb(order_id):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{oid}"),
-            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{oid}")
+            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{order_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"reject_{order_id}")
         ]
     ])
-
-def reset(uid):
-    user_state.pop(uid, None)
-
-# ================= HELPERS =================
-
-def get_user(uid, name):
-    if not users.find_one({"_id": uid}):
-        users.insert_one({
-            "_id": uid,
-            "name": name,
-            "balance": 0,
-            "total_deposit": 0,
-            "today_deposit": 0,
-            "last_update": datetime.now()
-        })
-    return users.find_one({"_id": uid})
-
-def add_balance(uid, amt):
-    users.update_one(
-        {"_id": uid},
-        {"$inc": {
-            "balance": amt,
-            "total_deposit": amt,
-            "today_deposit": amt
-        },
-         "$set": {"last_update": datetime.now()}
-        }
-    )
 
 # ================= START =================
 
 @app.on_message(filters.command("start"))
 async def start(_, m):
-    reset(m.from_user.id)
+    hard_reset(m.from_user.id)
     try:
         await app.get_chat_member(FORCE_JOIN, m.from_user.id)
     except:
-        return await m.reply("🚫 Must join channel", reply_markup=force_join_kb())
+        return await m.reply(
+            "🚫 **Must join channel to use the bot**",
+            reply_markup=force_join_kb()
+        )
 
     get_user(m.from_user.id, m.from_user.first_name)
     await m.reply("🔥 Welcome", reply_markup=main_kb)
@@ -114,32 +125,77 @@ async def joined(_, q: CallbackQuery):
     try:
         await app.get_chat_member(FORCE_JOIN, q.from_user.id)
     except:
-        return await q.answer("❌ Join first", show_alert=True)
+        return await q.answer("❌ Join channel first", show_alert=True)
 
     await q.message.delete()
     await app.send_message(q.from_user.id, "🔥 Welcome", reply_markup=main_kb)
 
-# ================= PROFILE =================
+# ================= MY PROFILE =================
 
-@app.on_message(filters.regex("^👤 My Profile$"))
-async def profile(_, m):
-    reset(m.from_user.id)
+@app.on_message(filters.regex(r"^👤 My Profile$"))
+async def my_profile(_, m):
+    hard_reset(m.from_user.id)
     u = get_user(m.from_user.id, m.from_user.first_name)
     await m.reply(
-        f"👤 **My Profile**\n\n"
-        f"Name: {u['name']}\n"
-        f"User ID: `{u['_id']}`\n\n"
-        f"Balance: ₹{u['balance']}\n"
-        f"Total Deposit: ₹{u['total_deposit']}\n"
-        f"Today Deposit: ₹{u['today_deposit']}\n"
-        f"Last Update: {u['last_update']}"
+        "⭐ **User Profile** ⭐\n\n"
+        f"👤 Name: {u['name']}\n"
+        f"🆔 ID: `{u['_id']}`\n\n"
+        f"💰 Balance: ₹{u['balance']}\n"
+        f"📊 Total Deposit: ₹{u['total_deposit']}\n"
+        f"📅 Today Deposit: ₹{u['today_deposit']}\n\n"
+        f"⏰ Last Updated: {u['last_update']}"
+    )
+
+# ================= HOW TO USE =================
+
+@app.on_message(filters.regex(r"^📘 How to Use$"))
+async def how_to_use(_, m):
+    hard_reset(m.from_user.id)
+    await m.reply(
+        "🚀 **Start Using the Bot Like a Pro!**\n\n"
+        "🔥 **WATCH BOT TUTORIAL** 👇\n"
+        "🎥 https://t.me/howtouse3\n\n"
+        "✅ Step-by-step guide\n"
+        "✅ Super easy to follow\n"
+        "✅ Must watch before using the bot!"
+    )
+
+# ================= SUPPORT =================
+
+@app.on_message(filters.regex(r"^🧑‍💻 Support$"))
+async def support(_, m):
+    hard_reset(m.from_user.id)
+    await m.reply(
+        "📚 **FAQ & Support 😊**\n\n"
+        "🔗 Official Channel: 👉 @Honey_fereshtegan\n"
+        "💬 Support Admin: 👉 @NIXHANT_VERMA33\n\n"
+        "🚦 Feel free to reach out if you need any help!"
+    )
+
+# ================= DISCOUNT =================
+
+@app.on_message(filters.regex(r"^🏷 Discount$"))
+async def discount(_, m):
+    hard_reset(m.from_user.id)
+    await m.reply(
+        "🏷 **Daily Deposit Discount Offer**\n\n"
+        "📌 Slabs (Telegram Accounts only):\n"
+        "• ₹1000+ → 5% discount\n"
+        "• ₹2000+ → 10% discount\n"
+        "• ₹4000+ → 15% discount\n"
+        "• ₹5000+ → 20% discount\n\n"
+        "💰 Your total deposit today: ₹0\n"
+        "🚫 No discount active for you today yet.\n"
+        "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
+        "⏰ Discount resets daily (00:00–23:59)\n"
+        "⚠️ Only valid on Telegram Accounts"
     )
 
 # ================= PROMOCODE =================
 
-@app.on_message(filters.regex("^🎁 Promocode$"))
+@app.on_message(filters.regex(r"^🎁 Promocode$"))
 async def promo(_, m):
-    reset(m.from_user.id)
+    hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "PROMO"}
     await m.reply("🎁 Promocode bhejo:")
 
@@ -158,31 +214,57 @@ async def create_promo(_, m):
     })
     await m.reply(f"✅ Promocode created\n\nCode: `{code}`")
 
-# ================= BUY =================
+# ================= TELEGRAM ACCOUNTS =================
 
-@app.on_message(filters.regex("^📦 Telegram Accounts$"))
-async def buy(_, m):
-    reset(m.from_user.id)
+@app.on_message(filters.regex(r"^📦 Telegram Accounts$"))
+async def telegram_accounts(_, m):
+    hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "BUY"}
-    await m.reply("📦 Price: ₹50 per ID\nQuantity bhejo:")
+    await m.reply(
+        "📦 **Telegram Accounts**\n\n"
+        "💵 Price: ₹50 per account\n"
+        "✏️ Send quantity (numbers only):"
+    )
 
 # ================= DEPOSIT =================
 
-@app.on_message(filters.regex("^💰 Deposit$"))
+@app.on_message(filters.regex(r"^💰 Deposit$"))
 async def deposit(_, m):
-    reset(m.from_user.id)
+    hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "DEPOSIT", "step": "AMOUNT"}
-    await m.reply(f"💰 Pay via UPI\nUPI ID: `{UPI_ID}`", reply_markup=paid_kb())
+    await m.reply(
+        f"💰 **Pay via UPI**\n\nUPI ID: `{UPI_ID}`",
+        reply_markup=deposit_kb()
+    )
 
-@app.on_callback_query(filters.regex("^cancel$"))
-async def cancel(_, q: CallbackQuery):
-    reset(q.from_user.id)
+@app.on_callback_query(filters.regex("^cancel_deposit$"))
+async def cancel_deposit(_, q: CallbackQuery):
+    hard_reset(q.from_user.id)
     await q.message.edit("⛔ Deposit cancelled")
     await app.send_message(q.from_user.id, "Main menu 👇", reply_markup=main_kb)
 
 @app.on_callback_query(filters.regex("^paid$"))
 async def paid(_, q: CallbackQuery):
-    await q.message.reply("💰 Amount bhejo:")
+    await q.message.reply("💰 Enter deposit amount (numbers only):")
+
+# ================= DEPOSIT HISTORY =================
+
+@app.on_message(filters.regex(r"^📜 Deposit History$"))
+async def deposit_history(_, m):
+    hard_reset(m.from_user.id)
+    data = list(orders.find({"user": m.from_user.id}).sort("time", -1))
+    if not data:
+        return await m.reply("📜 No deposit history found.")
+
+    text = "📜 **Deposit History**\n\n"
+    for d in data[-10:]:
+        text += (
+            f"🧾 Order ID: `{d['order_id']}`\n"
+            f"💰 Amount: ₹{d['amount']}\n"
+            f"📌 Status: {d['status']}\n"
+            f"⏰ {d['time']}\n\n"
+        )
+    await m.reply(text)
 
 # ================= TEXT ROUTER =================
 
@@ -195,17 +277,17 @@ async def router(_, m):
 
     text = m.text.strip()
 
-    # PROMO
+    # PROMO REDEEM
     if state.get("flow") == "PROMO":
         promo = promos.find_one({"code": text})
         if not promo or uid in promo["used"]:
             return await m.reply("❌ Invalid promocode")
         add_balance(uid, promo["amount"])
         promos.update_one({"code": text}, {"$push": {"used": uid}})
-        reset(uid)
-        return await m.reply(f"✅ ₹{promo['amount']} added")
+        hard_reset(uid)
+        return await m.reply(f"✅ ₹{promo['amount']} added to balance")
 
-    # BUY
+    # BUY ACCOUNTS
     if state.get("flow") == "BUY":
         if not text.isdigit():
             return
@@ -215,22 +297,22 @@ async def router(_, m):
         if u["balance"] < cost:
             return await m.reply("❌ Insufficient balance")
         users.update_one({"_id": uid}, {"$inc": {"balance": -cost}})
-        reset(uid)
-        return await m.reply(f"✅ Purchased {qty} IDs")
+        hard_reset(uid)
+        return await m.reply(f"✅ Purchased {qty} Telegram accounts")
 
-    # DEPOSIT
+    # DEPOSIT FLOW
     if state.get("flow") == "DEPOSIT":
         if state["step"] == "AMOUNT":
             if not text.isdigit():
                 return
-            user_state[uid]["step"] = "UTR"
             user_state[uid]["amount"] = int(text)
-            return await m.reply("🔢 UTR bhejo:")
+            user_state[uid]["step"] = "UTR"
+            return await m.reply("🔢 Enter UTR / Transaction ID:")
 
         if state["step"] == "UTR":
-            oid = str(uuid.uuid4())[:8]
+            order_id = str(uuid.uuid4())[:8]
             orders.insert_one({
-                "order_id": oid,
+                "order_id": order_id,
                 "user": uid,
                 "amount": state["amount"],
                 "utr": text,
@@ -240,13 +322,19 @@ async def router(_, m):
             for admin in ADMIN_IDS:
                 await app.send_message(
                     admin,
-                    f"🧾 Deposit\nUser: {uid}\n₹{state['amount']}\nUTR: {text}\nID: {oid}",
-                    reply_markup=admin_kb(oid)
+                    f"🧾 **Deposit Request**\n\n"
+                    f"👤 User: `{uid}`\n"
+                    f"💰 Amount: ₹{state['amount']}\n"
+                    f"🔢 UTR: {text}\n"
+                    f"🆔 Order ID: `{order_id}`",
+                    reply_markup=admin_kb(order_id)
                 )
-            reset(uid)
-            return await m.reply(f"⏳ Waiting approval\nOrder ID: `{oid}`")
+            hard_reset(uid)
+            return await m.reply(
+                f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`"
+            )
 
-# ================= ADMIN =================
+# ================= ADMIN APPROVAL =================
 
 @app.on_callback_query(filters.regex("^approve_"))
 async def approve(_, q: CallbackQuery):
@@ -256,7 +344,7 @@ async def approve(_, q: CallbackQuery):
         return
     add_balance(order["user"], order["amount"])
     orders.update_one({"order_id": oid}, {"$set": {"status": "approved"}})
-    await app.send_message(order["user"], f"✅ ₹{order['amount']} added")
+    await app.send_message(order["user"], f"✅ Payment approved\n₹{order['amount']} added")
     await q.message.edit("✅ Approved")
 
 @app.on_callback_query(filters.regex("^reject_"))
@@ -264,33 +352,6 @@ async def reject(_, q: CallbackQuery):
     oid = q.data.split("_")[1]
     orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
     await q.message.edit("❌ Rejected")
-
-# ================= HISTORY =================
-
-@app.on_message(filters.regex("^📜 Deposit History$"))
-async def history(_, m):
-    reset(m.from_user.id)
-    data = list(orders.find({"user": m.from_user.id}).sort("time", -1).limit(10))
-    if not data:
-        return await m.reply("📜 No history")
-    msg = "📜 Deposit History\n\n"
-    for d in data:
-        msg += f"{d['order_id']} | ₹{d['amount']} | {d['status']}\n"
-    await m.reply(msg)
-
-# ================= STATIC =================
-
-@app.on_message(filters.regex("^📘 How to Use$"))
-async def howto(_, m):
-    await m.reply("📘 Deposit → Buy → Done")
-
-@app.on_message(filters.regex("^🧑‍💻 Support$"))
-async def support(_, m):
-    await m.reply("Support:\n@techbotss\n@NIXHANT_VERMA33")
-
-@app.on_message(filters.regex("^🏷 Discount$"))
-async def discount(_, m):
-    await m.reply("🏷 ₹1000+ → 5%\n₹2000+ → 10%")
 
 # ================= RUN =================
 
