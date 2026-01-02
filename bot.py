@@ -118,7 +118,7 @@ async def start(_, m):
         )
 
     get_user(m.from_user.id, m.from_user.first_name)
-    await m.reply("🔥 Welcome", reply_markup=main_kb)
+    await m.reply("🔥 **Welcome to the Bot!**\n\n **Use the menu below to explore features.**", reply_markup=main_kb)
 
 @app.on_callback_query(filters.regex("^joined$"))
 async def joined(_, q: CallbackQuery):
@@ -128,7 +128,7 @@ async def joined(_, q: CallbackQuery):
         return await q.answer("❌ **Join Channel First**", show_alert=True)
 
     await q.message.delete()
-    await app.send_message(q.from_user.id, "🔥 Welcome", reply_markup=main_kb)
+    await app.send_message(q.from_user.id, "🔥 **Welcome to the Bot!**\n\n **Use the menu below to explore features.**", reply_markup=main_kb)
 
 # ================= MY PROFILE =================
 
