@@ -19,7 +19,7 @@ DB_NAME = "tg_shop"
 
 ADMIN_IDS = [6944519938]
 FORCE_JOIN = "@techbotss"
-UPI_ID = "dev@upi"
+UPI_ID = "whoisnaseem@fam "
 
 # ================= INIT =================
 app = Client(
