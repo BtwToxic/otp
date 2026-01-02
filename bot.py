@@ -395,7 +395,7 @@ async def reject(_, q: CallbackQuery):
     await app.send_message(order["user"], "❌ Payment rejected\nContact support")
 
 # ================= /add =================
-@app.on_message(filters.command("add"))
+@app.on_message(filters.regex(r"^/add(@\w+)?$"))
 async def add_start(_, m):
     if m.from_user.id not in ADMIN_IDS:
         return await m.reply("❌ You are not admin")
