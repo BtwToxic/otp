@@ -240,8 +240,18 @@ async def buy_start(_, q: CallbackQuery):
 async def deposit(_, m):
     hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "DEPOSIT", "step": "AMOUNT"}
-    await m.reply(f"💰 Pay via UPI\n\nUPI ID: `{UPI_ID}`", reply_markup=deposit_kb())
 
+    await m.reply_photo(
+        photo="assets/qr.jpg",
+        caption=(
+            "💰 **Pay via UPI**\n\n"
+            f"**UPI ID:** `{UPI_ID}`\n\n"
+            "**NAME – NASEEM AKHTER**\n\n"
+            "**All Payment Method Accepted • ✔️**\n\n"
+            "**Regards -** @BlazeNXT"
+        ),
+        reply_markup=deposit_kb()
+    )
 @app.on_callback_query(filters.regex("^cancel_deposit$"))
 async def cancel_deposit(_, q: CallbackQuery):
     hard_reset(q.from_user.id)
