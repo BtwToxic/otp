@@ -167,8 +167,8 @@ async def support(_, m):
     hard_reset(m.from_user.id)
     await m.reply(
         "📚 **FAQ & Support 😊**\n\n"
-        "🔗 Official Channel: 👉 @Honey_fereshtegan\n"
-        "💬 Support Admin: 👉 @NIXHANT_VERMA33\n\n"
+        "🔗 Official Channel: 👉 @TechBotss\n\n"
+        "💬 Support Admin: 👉 @ikBug\n\n"
         "🚦 Feel free to reach out if you need any help!"
     )
 
@@ -184,7 +184,7 @@ async def discount(_, m):
         "• ₹2000+ → 10% discount\n"
         "• ₹4000+ → 15% discount\n"
         "• ₹5000+ → 20% discount\n\n"
-        "💰 Your total deposit today: ₹{u['today_deposit']}\n"
+       f"💰 Your total deposit today: ₹{u['today_deposit']}\n"
         "🚫 No discount active for you today yet.\n"
         "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
         "⏰ Discount resets daily (00:00–23:59)\n"
@@ -252,18 +252,25 @@ async def paid(_, q: CallbackQuery):
 @app.on_message(filters.regex(r"^📜 Deposit History$"))
 async def deposit_history(_, m):
     hard_reset(m.from_user.id)
-    data = list(orders.find({"user": m.from_user.id}).sort("time", -1))
+
+    data = list(
+        orders.find({"user": m.from_user.id}).sort("time", -1)
+    )
+
     if not data:
         return await m.reply("📜 No deposit history found.")
 
     text = "📜 **Deposit History**\n\n"
+
     for d in data[-10:]:
+        status = d.get("status", "pending")  # 🔥 FIX LINE
         text += (
-            f"🧾 Order ID: `{d['order_id']}`\n"
-            f"💰 Amount: ₹{d['amount']}\n"
-            f"📌 Status: {d['status']}\n"
-            f"⏰ {d['time']}\n\n"
+            f"🧾 Order ID: `{d.get('order_id','N/A')}`\n"
+            f"💰 Amount: ₹{d.get('amount',0)}\n"
+            f"📌 Status: {status}\n"
+            f"⏰ {d.get('time','')}\n\n"
         )
+
     await m.reply(text)
 
 # ================= TEXT ROUTER =================
