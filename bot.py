@@ -186,14 +186,10 @@ async def discount(_, m):
         "• ₹2000+ → 10% discount\n"
         "• ₹4000+ → 15% discount\n"
         "• ₹5000+ → 20% discount\n\n"
-        f"💰 Your total deposit today: ₹{u['total_deposit']}\n"
-        + (
-            "🚫 No discount active for you today yet.\n"
-            "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
-            if u < 1000 else
-            "✅ Discount unlocked! It will apply on Telegram Accounts purchase.\n\n"
-        )
-        +
+       f"💰 Your total deposit today: ₹{u['total_deposit']}\n"
+        "🚫 No discount active for you today yet.\n"
+        "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
+        "✅ Discount unlocked! It will apply on Telegram Accounts purchase.\n\n"
         "⏰ Discount resets daily (00:00–23:59)\n"
         "⚠️ Discount valid only on Telegram Accounts"
     )
@@ -364,7 +360,7 @@ async def approve(_, q: CallbackQuery):
 async def reject(_, q: CallbackQuery):
     oid = q.data.split("_")[1]
     orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
-    await q.message.edit("Payment Rejected Please Contact Support Team")
+    await q.message.edit("Payment Rejected")
 
 # ================= RUN =================
 
