@@ -203,7 +203,7 @@ async def discount(_, m):
 async def promo(_, m):
     hard_reset(m.from_user.id)
     user_state[m.from_user.id] = {"flow": "PROMO"}
-    await m.reply("🎁 **SEND YOUR PROMO CODE** :")
+    await m.reply("**🎁 Please send your promocode to redeem:** :")
 
 @app.on_message(filters.command("code"))
 async def create_promo(_, m):
