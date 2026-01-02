@@ -300,7 +300,7 @@ async def router(_, m):
         if i["available"] < qty:
             return await m.reply("❌ Not enough stock")
         if u["balance"] < cost:
-            return await m.reply("❌ Insufficient balance\n➡️ Please deposit")
+            return await m.reply("❌ Insufficient balance\n➡️ Please Deposit Funds")
 
         sessions = list(accounts.find({"country": country}).limit(qty))
         if len(sessions) < qty:
@@ -313,9 +313,9 @@ async def router(_, m):
         for s in sessions:
             await app.send_message(
                 uid,
-                f"🔐 **Here is your tg Account String Session**\n\n`{s['session']}`\n\n**Note ~ USE THIS STRING SESSION FOR LOG IN CLICK LOG IN BUTTON**",
+                f"🔐 **Here is your tg Account String Session**\n\n`{s['session']}`\n\n**Note ~ USE THIS STRING SESSION FOR LOG IN**\n\n**CLICK LOG IN BUTTON FOR ACCOUNT LOGIN**",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(f"**Log in**", url=f"https://t.me/{bot.username}")]
+                    [InlineKeyboardButton(f"**Log in**", url=f"https://t.me/AccountxLoginBot")]
                 ])
             )
             accounts.delete_one({"_id": s["_id"]})
