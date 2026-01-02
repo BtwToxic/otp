@@ -184,7 +184,7 @@ async def discount(_, m):
         "• ₹2000+ → 10% discount\n"
         "• ₹4000+ → 15% discount\n"
         "• ₹5000+ → 20% discount\n\n"
-        "💰 Your total deposit today: ₹0\n"
+        "💰 Your total deposit today: ₹{u['today_deposit']}\n"
         "🚫 No discount active for you today yet.\n"
         "➡️ Deposit at least ₹1000 today to unlock 5% discount.\n\n"
         "⏰ Discount resets daily (00:00–23:59)\n"
