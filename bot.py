@@ -361,7 +361,7 @@ async def reject(_, q: CallbackQuery):
     oid = q.data.split("_")[1]
     orders.update_one({"order_id": oid}, {"$set": {"status": "rejected"}})
     await q.message.edit("Payment Rejected")
-
+    await app.send_message(order["user"], "**Payment Rejected Please Contact Support Team**")
 # ================= RUN =================
 
 app.run()
