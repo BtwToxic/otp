@@ -1,28 +1,20 @@
 from pyrogram import Client, filters
-from pyrogram.types import (
-    ReplyKeyboardMarkup,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    CallbackQuery
-)
+from pyrogram.types import ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-import uuid
-import random
-import string
-import os
+import uuid, random, string, os
 
 # ================= CONFIG =================
 
-BOT_TOKEN = "8366650744:AAG5wP84RcqA8VmN4OcmR3ucTsmXfeCRmqc"
-MONGO_URL = "mongodb+srv://Krishna:pss968048@cluster0.4rfuzro.mongodb.net/?retryWrites=true&w=majority"
+BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = "tg_shop"
 
-ADMIN_IDS = [6944519938]  # apni telegram ID
-FORCE_JOIN = "@techbotss"
+ADMIN_IDS = [123456789]  # apni Telegram ID
+FORCE_JOIN = "@yourchannel"
 UPI_ID = "dev@upi"
 
-# ==========================================
+# ================= APP =================
 
 app = Client("tg_shop_bot", bot_token=BOT_TOKEN)
 
@@ -32,7 +24,8 @@ db = mongo[DB_NAME]
 users = db.users
 promos = db.promos
 orders = db.orders
-items = db.items
+
+user_state = {}
 
 # ================= KEYBOARDS =================
 
@@ -54,8 +47,7 @@ def approve_kb(order_id):
 # ================= HELPERS =================
 
 def get_user(uid, name):
-    user = users.find_one({"_id": uid})
-    if not user:
+    if not users.find_one({"_id": uid}):
         users.insert_one({
             "_id": uid,
             "name": name,
@@ -79,7 +71,7 @@ def add_balance(uid, amt):
         }
     )
 
-def new_promo(amount):
+def create_promo(amount):
     code = "PROMO-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
     promos.insert_one({
         "code": code,
@@ -92,26 +84,21 @@ def new_promo(amount):
 # ================= START =================
 
 @app.on_message(filters.command("start"))
-async def start(client, message):
+async def start(_, m):
     try:
-        await client.get_chat_member(FORCE_JOIN, message.from_user.id)
+        await app.get_chat_member(FORCE_JOIN, m.from_user.id)
     except:
-        return await message.reply(
-            f"❌ Pehle channel join karo:\n{FORCE_JOIN}"
-        )
+        return await m.reply(f"❌ Pehle channel join karo:\n{FORCE_JOIN}")
 
-    get_user(message.from_user.id, message.from_user.first_name)
-    await message.reply(
-        "🔥 **Welcome to the Bot!**\nUse menu below 👇",
-        reply_markup=main_kb
-    )
+    get_user(m.from_user.id, m.from_user.first_name)
+    await m.reply("🔥 Welcome to the Bot!", reply_markup=main_kb)
 
 # ================= PROFILE =================
 
 @app.on_message(filters.regex("My Profile"))
-async def profile(client, message):
-    u = get_user(message.from_user.id, message.from_user.first_name)
-    await message.reply(
+async def profile(_, m):
+    u = get_user(m.from_user.id, m.from_user.first_name)
+    await m.reply(
         f"⭐ **User Profile** ⭐\n\n"
         f"👤 Name: {u['name']}\n"
         f"🆔 ID: `{u['_id']}`\n\n"
@@ -124,179 +111,156 @@ async def profile(client, message):
 # ================= PROMOCODE =================
 
 @app.on_message(filters.regex("Promocode"))
-async def promo_ask(client, message):
-    await message.reply("🎁 Send promocode:")
-
-@app.on_message(filters.text & ~filters.command)
-async def promo_redeem(client, message):
-    code = message.text.strip()
-    p = promos.find_one({"code": code})
-    if not p:
-        return
-
-    if datetime.now() > p["expires"]:
-        return await message.reply("❌ Promocode expired")
-
-    if message.from_user.id in p["used"]:
-        return await message.reply("❌ Promocode already used")
-
-    add_balance(message.from_user.id, p["amount"])
-    promos.update_one({"code": code}, {"$push": {"used": message.from_user.id}})
-
-    await message.reply(f"✅ ₹{p['amount']} added to your balance")
-
-# ================= ADMIN PROMO =================
+async def promo_start(_, m):
+    user_state[m.from_user.id] = "PROMO"
+    await m.reply("🎁 Send your promocode:")
 
 @app.on_message(filters.command("pro"))
-async def admin_promo(client, message):
-    if message.from_user.id not in ADMIN_IDS:
+async def admin_promo(_, m):
+    if m.from_user.id not in ADMIN_IDS:
         return
-
     try:
-        amount = int(message.command[1])
+        amount = int(m.command[1])
     except:
-        return await message.reply("❌ Use: /pro 100")
+        return await m.reply("Use: /pro 100")
 
-    code = new_promo(amount)
-    await message.reply(
-        f"🎁 **New Promocode Generated**\n\n"
-        f"Code: `{code}`\n"
-        f"Amount: ₹{amount}\n"
-        f"Valid: 3 Days"
-    )
+    code = create_promo(amount)
+    await m.reply(f"✅ Promocode Created\n\nCode: `{code}`\nAmount: ₹{amount}\nValid: 3 Days")
 
 # ================= DEPOSIT =================
 
 @app.on_message(filters.regex("Deposit"))
-async def deposit(client, message):
-    await message.reply(
-        f"💰 **Deposit Funds**\n\n"
+async def deposit(_, m):
+    user_state[m.from_user.id] = "DEPOSIT"
+    await m.reply(
+        f"💰 Pay via UPI\n\n"
         f"UPI ID: `{UPI_ID}`\n\n"
-        f"Payment ke baad:\n"
-        f"`Amount + UTR` bhejo\n\n"
-        f"Example:\n`50 1234567890`"
+        f"Send like:\n`50 UTR123456`"
     )
 
-@app.on_message(filters.regex(r"^\d+\s+\w+"))
-async def deposit_request(client, message):
-    parts = message.text.split()
-    if len(parts) < 2:
-        return
+# ================= ACCOUNTS =================
 
-    amount = int(parts[0])
-    utr = parts[1]
-    order_id = str(uuid.uuid4())[:8]
+@app.on_message(filters.regex("Telegram Accounts"))
+async def accounts(_, m):
+    user_state[m.from_user.id] = "BUY"
+    await m.reply("📦 Each account = ₹50\n\nSend quantity (number only)")
 
-    orders.insert_one({
-        "order_id": order_id,
-        "user": message.from_user.id,
-        "amount": amount,
-        "utr": utr
-    })
+# ================= TEXT ROUTER (FIXED) =================
 
-    for admin in ADMIN_IDS:
-        await client.send_message(
-            admin,
-            f"🧾 **New Deposit Request**\n\n"
-            f"👤 User: {message.from_user.id}\n"
-            f"💰 Amount: ₹{amount}\n"
-            f"🔢 UTR: {utr}\n"
-            f"🆔 Order ID: {order_id}",
-            reply_markup=approve_kb(order_id)
+@app.on_message(filters.text & ~filters.command())
+async def text_router(_, m):
+    uid = m.from_user.id
+    text = m.text.strip()
+
+    # PROMO
+    if user_state.get(uid) == "PROMO":
+        promo = promos.find_one({"code": text})
+        if not promo:
+            return await m.reply("❌ Invalid promocode")
+
+        if datetime.now() > promo["expires"]:
+            return await m.reply("❌ Promocode expired")
+
+        if uid in promo["used"]:
+            return await m.reply("❌ Already used")
+
+        add_balance(uid, promo["amount"])
+        promos.update_one({"code": text}, {"$push": {"used": uid}})
+        user_state.pop(uid)
+
+        return await m.reply(f"✅ ₹{promo['amount']} added to balance")
+
+    # DEPOSIT
+    if user_state.get(uid) == "DEPOSIT":
+        try:
+            amount, utr = text.split()
+            amount = int(amount)
+        except:
+            return await m.reply("❌ Format galat\nExample: 50 UTR123")
+
+        order_id = str(uuid.uuid4())[:8]
+        orders.insert_one({
+            "order_id": order_id,
+            "user": uid,
+            "amount": amount,
+            "utr": utr
+        })
+
+        for admin in ADMIN_IDS:
+            await app.send_message(
+                admin,
+                f"🧾 New Deposit\nUser: {uid}\nAmount: ₹{amount}\nUTR: {utr}\nOrder: {order_id}",
+                reply_markup=approve_kb(order_id)
+            )
+
+        user_state.pop(uid)
+        return await m.reply(f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`")
+
+    # BUY
+    if user_state.get(uid) == "BUY":
+        if not text.isdigit():
+            return await m.reply("❌ Sirf number bhejo")
+
+        qty = int(text)
+        cost = qty * 50
+        u = users.find_one({"_id": uid})
+
+        if u["balance"] < cost:
+            return await m.reply(f"❌ Insufficient balance\nRequired: ₹{cost}")
+
+        users.update_one({"_id": uid}, {"$inc": {"balance": -cost}})
+        user_state.pop(uid)
+
+        return await m.reply(
+            f"✅ Purchase Successful\n\n"
+            f"Quantity: {qty}\nCost: ₹{cost}"
         )
-
-    await message.reply(
-        f"⏳ Waiting for admin approval\nOrder ID: `{order_id}`"
-    )
 
 # ================= APPROVAL =================
 
 @app.on_callback_query(filters.regex("approve_"))
-async def approve_payment(client, query: CallbackQuery):
-    if query.from_user.id not in ADMIN_IDS:
+async def approve(_, q: CallbackQuery):
+    if q.from_user.id not in ADMIN_IDS:
         return
 
-    order_id = query.data.split("_")[1]
-    o = orders.find_one({"order_id": order_id})
-    if not o:
+    order_id = q.data.split("_")[1]
+    order = orders.find_one({"order_id": order_id})
+    if not order:
         return
 
-    add_balance(o["user"], o["amount"])
-    await client.send_message(
-        o["user"],
-        f"✅ Payment Approved!\n₹{o['amount']} added to your balance"
-    )
-    await query.message.edit("✅ Payment Approved")
+    add_balance(order["user"], order["amount"])
+    await app.send_message(order["user"], f"✅ Payment approved\n₹{order['amount']} added")
+    await q.message.edit("✅ Approved")
 
-# ================= TELEGRAM ACCOUNTS (SAFE ITEMS) =================
-
-@app.on_message(filters.regex("Telegram Accounts"))
-async def accounts(client, message):
-    await message.reply(
-        "📦 **Available Digital Accounts**\n\n"
-        "Each item price: ₹50\n\n"
-        "Send quantity (numbers only)"
-    )
-
-@app.on_message(filters.regex(r"^\d+$"))
-async def buy_items(client, message):
-    qty = int(message.text)
-    u = users.find_one({"_id": message.from_user.id})
-    cost = qty * 50
-
-    if u["balance"] < cost:
-        return await message.reply(
-            f"❌ Insufficient Balance\n"
-            f"Your Balance: ₹{u['balance']}\n"
-            f"Required: ₹{cost}"
-        )
-
-    users.update_one(
-        {"_id": message.from_user.id},
-        {"$inc": {"balance": -cost}}
-    )
-
-    await message.reply(
-        f"✅ Purchase Successful!\n\n"
-        f"Items Bought: {qty}\n"
-        f"Cost: ₹{cost}\n\n"
-        f"📦 Your digital items will be delivered shortly."
-    )
-
-# ================= HOW TO USE =================
+# ================= MISC =================
 
 @app.on_message(filters.regex("How to Use"))
-async def howto(client, message):
-    await message.reply(
-        "🚀 **How to Use the Bot**\n\n"
+async def howto(_, m):
+    await m.reply(
+        "📘 HOW TO USE\n\n"
         "1️⃣ Deposit funds\n"
-        "2️⃣ Redeem promocode (optional)\n"
-        "3️⃣ Buy items\n\n"
-        "📺 Tutorial:\nhttps://t.me/howtouse3"
+        "2️⃣ Redeem promocode\n"
+        "3️⃣ Buy accounts\n\n"
+        "Tutorial:\nhttps://t.me/howtouse3"
     )
 
-# ================= DISCOUNT =================
-
 @app.on_message(filters.regex("Discount"))
-async def discount(client, message):
-    await message.reply(
-        "🏷 **Daily Deposit Discount**\n\n"
+async def discount(_, m):
+    await m.reply(
+        "🏷 DAILY DISCOUNT\n\n"
         "₹1000+ → 5%\n"
         "₹2000+ → 10%\n"
         "₹4000+ → 15%\n"
         "₹5000+ → 20%\n\n"
-        "⏰ Discount resets daily"
+        "⏰ Resets daily"
     )
 
-# ================= SUPPORT =================
-
 @app.on_message(filters.regex("Support"))
-async def support(client, message):
-    await message.reply(
-        "🧑‍💻 **Support**\n\n"
+async def support(_, m):
+    await m.reply(
+        "🧑‍💻 SUPPORT\n\n"
         "📢 Channel: @Honey_fereshtegan\n"
-        "👤 Admin: @NIXHANT_VERMA33\n\n"
-        "Feel free to contact 💬"
+        "👤 Admin: @NIXHANT_VERMA33"
     )
 
 # ================= RUN =================
