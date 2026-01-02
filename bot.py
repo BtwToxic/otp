@@ -12,12 +12,12 @@ import uuid, random, string
 # ================= CONFIG =================
 API_ID = 21705136
 API_HASH = "78730e89d196e160b0f1992018c6cb19"
-BOT_TOKEN = "8366650744:AAG5wP84RcqA8VmN4OcmR3ucTsmXfeCRmqc"
+BOT_TOKEN = "8314490143:AAEuAz7kgvp-yP_knzR5EvFCGLbUxCBmN5M"
 
 MONGO_URL = "mongodb+srv://Krishna:pss968048@cluster0.4rfuzro.mongodb.net/?retryWrites=true&w=majority"
 DB_NAME = "tg_shop"
 
-ADMIN_IDS = [6944519938]
+ADMIN_IDS = [5812817910]
 FORCE_JOIN = "@techbotss"
 UPI_ID = "whoisnaseem@fam "
 
