@@ -18,7 +18,7 @@ MONGO_URL = "mongodb+srv://Krishna:pss968048@cluster0.4rfuzro.mongodb.net/?retry
 DB_NAME = "tg_shop"
 
 ADMIN_IDS = [5812817910]
-FORCE_JOIN = "@techbotss"
+FORCE_JOIN = "@tgsupplyupdates"
 UPI_ID = "whoisnaseem@fam "
 
 # ================= INIT =================
