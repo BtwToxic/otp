@@ -325,7 +325,7 @@ async def router(_, m):
                 uid,
                 f"🔐 **Here is your tg Account String Session**\n\n`{s['session']}`\n\n**Note ~ USE THIS STRING SESSION FOR LOG IN**\n\n**CLICK LOG IN BUTTON FOR ACCOUNT LOGIN**",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(f"Log in", url=f"https://t.me/UDR0BOT")]
+                    [InlineKeyboardButton(f"Log in", url=f"https://t.me/TgSupplyLoginBOT")]
                 ])
             )
             accounts.delete_one({"_id": s["_id"]})
