@@ -6,12 +6,12 @@ import uuid, random, string, os
 
 # ================= CONFIG =================
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+BOT_TOKEN = "8366650744:AAG5wP84RcqA8VmN4OcmR3ucTsmXfeCRmqc"
+MONGO_URL = "mongodb+srv://Krishna:pss968048@cluster0.4rfuzro.mongodb.net/?retryWrites=true&w=majority"
 DB_NAME = "tg_shop"
 
-ADMIN_IDS = [123456789]  # apni Telegram ID
-FORCE_JOIN = "@yourchannel"
+ADMIN_IDS = [6944519938]  # apni Telegram ID
+FORCE_JOIN = "@techbotss"
 UPI_ID = "dev@upi"
 
 # ================= APP =================
